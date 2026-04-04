@@ -39,7 +39,10 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             pkill -f deployment || true
+            cd /home/ubuntu
             setsid nohup env DB_URL=${{ secrets.DB_URL }} \
                  DB_USERNAME=${{ secrets.DB_USERNAME }} \
                  DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-                 java -Xms256m -Xmx512m -jar /home/ubuntu/deployment-0.0.1-SNAPSHOT.jar > app.log 2>&1 < /dev/null &
+                 java -Xms256m -Xmx512m -jar deployment-0.0.1-SNAPSHOT.jar > app.log 2>&1 < /dev/null &
+            sleep 5
+            ps aux | grep java
