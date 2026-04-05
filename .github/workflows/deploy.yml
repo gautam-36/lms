@@ -22,27 +22,23 @@ jobs:
       - name: Build JAR
         run: mvn clean package -DskipTests
 
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
       - name: Copy JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "target/deployment-0.0.1-SNAPSHOT.jar"
-          target: "/home/ubuntu"
+        run: |
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              target/deployment-0.0.1-SNAPSHOT.jar \
+              ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ubuntu/
 
       - name: Restart App on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          script: |
-            pkill -f deployment || true
-            cd /home/ubuntu
-            setsid nohup env DB_URL=${{ secrets.DB_URL }} \
-                 DB_USERNAME=${{ secrets.DB_USERNAME }} \
-                 DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-                 java -Xms256m -Xmx512m -jar deployment-0.0.1-SNAPSHOT.jar > app.log 2>&1 < /dev/null &
-            sleep 5
-            ps aux | grep java
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+              "sudo systemctl restart myapp && sleep 5 && sudo systemctl status myapp"
