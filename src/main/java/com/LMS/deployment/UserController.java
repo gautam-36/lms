@@ -11,7 +11,7 @@ import java.util.List;
 @Slf4j
 public class UserController {
 
-    private finasl UserRepository userRepository;
+    private final UserRepository userRepository;
 
 
     // ✅ GET all users
